@@ -34,7 +34,7 @@ void build(int node) {
 }
 
 int query(int a, int b) {
-    if(h[a] > h[b]) swap(a,b);
+    if(h[a] < h[b]) swap(a,b);
 
     int lg;
     for(lg = 1;(1 << lg) <= h[a]; lg++);
