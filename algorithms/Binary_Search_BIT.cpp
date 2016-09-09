@@ -1,4 +1,4 @@
-//Taught by Felipe Abella
+
 
 int prefix(int k, int bit[], int N) {
     int pos = 0, pot = 0;
