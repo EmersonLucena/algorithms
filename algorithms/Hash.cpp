@@ -1,9 +1,9 @@
 #include <bits/stdc++.h>
 
-#define b1 31
+#define b1 311
 #define M1 1000000021LL
 
-#define b2 29
+#define b2 317
 #define M2 1000000009LL
 
 #define MAXN 250250
@@ -25,10 +25,10 @@ void calc() {
 }
 
 void compute() {
-	chash[0][0] = chash[0][1] = st[0] - 'a' + 1;
+	chash[0][0] = chash[0][1] = st[0] + 1;
 	for(int i=1; i<(int)st.size();i++) {
-		chash[i][0] = ((chash[i-1][0]*b1)%M1 + st[i] - 'a' + 1)%M1;
-		chash[i][1] = ((chash[i-1][1]*b2)%M2 + st[i] - 'a' + 1)%M2;
+		chash[i][0] = ((chash[i-1][0]*b1)%M1 + st[i] + 1)%M1;
+		chash[i][1] = ((chash[i-1][1]*b2)%M2 + st[i] + 1)%M2;
 	}
 }
 
