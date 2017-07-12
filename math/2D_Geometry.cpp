@@ -51,6 +51,33 @@ T polygon_area(vector <point> &points) {
     return abs(area) / 2;
 }
 
+/** Center of mass of a polygon with uniform mass distribution **/
+point polygon_centroid(vector <point> &poly) {
+    point ret;
+    T area = polygon_area(poly);
+
+    ret.x = (poly.back().x + poly[0].x) * vetorial(poly.back(), poly[0]);
+    ret.y = (poly.back().y + poly[0].y) * vetorial(poly.back(), poly[0]);
+    for(int i = 1; i < (int)poly.size(); i++) {
+        ret.x += (poly[i-1].x + poly[i].x) * vetorial(poly[i-1], poly[i]);
+        ret.y += (poly[i-1].y + poly[i].y) * vetorial(poly[i-1], poly[i]);
+    }
+
+    ret.x /= (6 * area);
+    ret.y /= (6 * area);
+
+    return ret;
+}
+
+point center_of_mass(point p1, T m1, point p2, T m2) {
+    point ret;
+    T M = m1 + m2;
+
+    ret.x = (p1.x * m1 + p2.x * m2) / M;
+    ret.y = (p1.y * m1 + p2.y * m2) / M;
+    return ret;
+}
+
 struct line {
     T a, b, c;
 
