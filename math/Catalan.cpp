@@ -6,5 +6,5 @@
 ll trapezoid(ll x, ll y, ll m) {
 	if(0 <= y && y < m)               return nCr(x + y, y);
 	else if(m <= y && y <= x + m - 1) return nCr(x + y, y) - nCr(x + y, y - m); // CAREFUL WITH MOD
-	else 							                return 0;
+	else 				  return 0;
 }
