@@ -12,7 +12,7 @@ void build() {
     for(int i=0;i<N;i++)
         rmq[i][0] = a[i];
 
-    for(int j=1;(1 << j) < N; j++)
+    for(int j=1;(1 << j) <= N; j++)
         for(int i=0; i + (1 << j) <= N; i++)
             rmq[i][j] = min(rmq[i][j-1], rmq[i + (1 << (j-1))][j-1]);
 }
