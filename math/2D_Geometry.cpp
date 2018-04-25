@@ -1,8 +1,11 @@
-#define EPS ...
+#define EPSG ... 
+#define EPSV ... ///EPS for voronoi
 #define INF ...
 
 using namespace std;
 typedef double T;
+
+T EPS = EPSG;
 
 int cmp(T x, T y = 0) {
 	return (x <= y + EPS) ? (x + EPS < y) ? -1 : 0 : 1;
@@ -22,10 +25,6 @@ struct point {
 };
 
 typedef pair<point, point> segm;
-
-point mid_point(point a, point b) {
-    return point((a.x + b.x) / 2, (a.y + b.y) / 2);
-}
 
 inline T distPoints(point a) {
     return sqrt(a.x * a.x + a.y * a.y);
@@ -150,7 +149,7 @@ struct circle {
     circle(point c, T r): center(c), rad(r) {}
 
     circle(point p1, point p2) {
-        center = mid_point(p1, p2);
+        center = (p1 + p2) / 2;
         rad = distPoints(p2 - p1) / 2;
     }
 
@@ -159,8 +158,8 @@ struct circle {
         line l23 (p2, p3);
         assert(!equal_lines(l12, l23));
 
-        point p12 = mid_point(p1, p2);
-        point p23 = mid_point(p2, p3);
+        point p12 = (p1 + p2) / 2;
+        point p23 = (p2 + p3) / 2;
 
         center = intersection(perpendicular(l12, p12), perpendicular(l23, p23));
         rad = distPoints(center - p1);
@@ -225,13 +224,6 @@ vector<point> convex_hull(vector<point> p, bool repeat_last = false) {
     return s;
 }
 
-point ComputeLineIntersection (point a, point b, point c, point d) {
-    b = b - a; d = c - d; c = c - a;
-    if (escalar(b,b) < EPS) return a;
-    if (escalar(d,d) < EPS) return c;
-    return a + b*vetorial(c,d)/vetorial(b,d);
-}
-
 ///Pick a very tight EPS (like 1e-16, use long double if needed)
 vector<vector<point> > voronoi(vector<point> p) {
     int n = p.size();
@@ -242,6 +234,7 @@ vector<vector<point> > voronoi(vector<point> p) {
     p.resize(p.size() + 4);
 
     for(int i = 0; i < n; i++) {
+        EPS = EPSV;
         diagram.push_back(vector<point>());
 
         p[n].x = 2*(-INF) - p[i].x; p[n].y = p[i].y;
@@ -257,19 +250,50 @@ vector<vector<point> > voronoi(vector<point> p) {
         }
 
         hull = convex_hull(inv, true);
+        EPS = EPSG;
 
-        for(int j = 0; j < hull.size(); j++) {
+        for(int j = 0; j < (int)hull.size(); j++) {
             assert(hull[j].id != -1);
             ans[j][0].x = (p[i].x + p[hull[j].id].x) / 2;
             ans[j][0].y = (p[i].y + p[hull[j].id].y) / 2;
             ans[j][1].x = ans[j][0].x - (p[hull[j].id].y - p[i].y);
             ans[j][1].y = ans[j][0].y + (p[hull[j].id].x - p[i].x);
 
-            if(j) diagram[i].push_back(ComputeLineIntersection(ans[j-1][0], ans[j-1][1], ans[j][0], ans[j][1]));
+            if(j) {
+                line r(ans[j-1][0], ans[j-1][1]), s(ans[j][0], ans[j][1]);
+                if(parallel(r, s)) continue;
+                point b = intersection(r, s);
+                diagram[i].push_back(b);
+            }
         }
     }
 
     return diagram;
+}
+
+/// 0 - Border / 1 - Outside / -1 - Inside
+int point_inside_polygon(point p, vector<point> &poly) {
+    int n = poly.size(), windingNumber = 0;
+
+    for(int i = 0; i < n; i++) {
+        if(distPoints(p - poly[i]) < EPS) return 0;
+        int j = (i + 1) % n;
+
+        if(cmp(poly[i].y, p.y) == 0 && cmp(poly[j].y, p.y) == 0) {
+            if(cmp(min(poly[i].x, poly[j].x), p.x) <= 0 &&
+                cmp(p.x, max(poly[i].x, poly[j].x)) <= 0) return 0;
+        }
+        else {
+            bool below = (cmp(poly[i].y, p.y) == -1);
+            if(below !=  (cmp(poly[j].y, p.y) == -1)) {
+                int orientation = ccw(p, poly[j], poly[i]);
+                if(orientation == 0) return 0;
+                if(below == (orientation > 0)) windingNumber += below ? 1 : -1;
+            }
+        }
+    }
+
+    return windingNumber == 0 ? 1 : -1;
 }
 
 int main() {
