@@ -2,86 +2,126 @@
 
 using namespace std;
 
-#define N 100100
-#define ALP_SIZ 52
+#define MN 1000100
+#define ALP 26
 
-int get(char c) {
-    if(c >= 'a' && c <= 'z') return c - 'a';
-    return c - 'A' + 26;
-}
+int C(char c) { return c - 'a'; }
 
-struct Automaton {
-    struct AC_node {
-        int fail, wid, endLink, child[ALP_SIZ];
-        bool leaf;
-    };
-    queue<int> q;
-    AC_node* no[N];
-    int nodes;
+struct aho {
+    int parent[MN], suffix[MN], transition[MN][ALP], super[MN];
+    char from[MN];
+    int id[MN], cnt, built;
+    long long ending[MN], lazy[MN];
 
-    int newnode() {
-        no[nodes] = new AC_node();
-        no[nodes]->fail = no[nodes]->wid = no[nodes]->endLink = no[nodes]->leaf = 0;
-        memset(no[nodes]->child, 0, sizeof(no[nodes]->child));
-        return nodes++;
+    int new_node(int _parent = 0, char _from = ' ') {
+        parent[cnt] = _parent; from[cnt] = _from; id[cnt] = -1;
+        suffix[cnt] = super[cnt] = ending[cnt] = lazy[cnt] = 0;
+        for(int i = 0; i < ALP; i++) transition[cnt][i] = 0;
+        return cnt++;
     }
 
-    void clear() {
-        nodes = 0;
-        newnode();
+    aho() {
+        cnt = built = 0;
+        new_node();
     }
 
-    void insert(string s, int id) {
-        int atual = 0;
-        for(int i = 0; i < s.size(); i++) {
-            int c = get(s[i]);
-            if(!no[atual]->child[c])
-                no[atual]->child[c] = newnode();
-            atual = no[atual]->child[c];
+    int add_word(string &word, int _id = 0) {
+        int node = 0;
+        for(int i = 0; i < word.size(); i++) {
+            int nxt = C(word[i]);
+            if(!transition[node][nxt]) transition[node][nxt] = new_node(node, word[i]);
+            node = transition[node][nxt];
         }
-        no[atual]->leaf = true;
-        no[atual]->wid = id;
+        ending[node]++;
+        if(id[node] == -1) id[node] = _id;
+        return id[node];
     }
 
-    void getFails() {
-        for(int i = 0; i < ALP_SIZ; i++)
-            if(no[0]->child[i]) {
-                no[ no[0]->child[i] ]->fail = 0, q.push(no[0]->child[i]);
-                if(no[ no[0]->child[i] ]->leaf) no[ no[0]->child[i] ]->endLink = no[0]->child[i];
-            }
+    void build() {
+        built = 1;
+        queue<int> q;
+        for(int i = 0; i < ALP; i++)
+            if(transition[0][i]) q.push(transition[0][i]);
 
         while(!q.empty()) {
-            int u = q.front(); q.pop();
+            int v = q.front(); q.pop();
+            if(parent[v]) suffix[v] = transition[suffix[parent[v]]][C(from[v])];
 
-            for(int i = 0; i < ALP_SIZ; i++) {
-                int v = no[u]->child[i];
-                if(!v) { no[u]->child[i] = no[no[u]->fail]->child[i]; continue; }
+            if(id[v] != -1) super[v] = v;
+            else super[v] = super[suffix[v]];
 
-                q.push(v);
-                int j = no[u]->fail;
-                while(j && !no[j]->child[i]) j = no[j]->fail;
-                no[v]->fail = no[j]->child[i];
-
-                if(no[v]->leaf) no[v]->endLink = v;
-                else no[v]->endLink = no[no[v]->fail]->endLink;
+            ending[v] += ending[suffix[v]];
+            for(int i = 0; i < ALP; i++) {
+                if(!transition[v][i]) transition[v][i] = transition[suffix[v]][i];
+                else q.push(transition[v][i]);
             }
         }
     }
-} AC;
 
-void findOccurs(Automaton &AC, string s) {
-    int atual = 0;
+    long long search_text(string &text) {
+        if(!built) build();
+        int prefix = 0;
+        long long count = ending[0];
+        for(char c : text) {
+            prefix = transition[prefix][C(c)];
+            count += ending[prefix];
+        }
+        return count;
+    }
 
-    for(int i = 0; i < s.size(); i++) {
-        while(!(AC.no[atual])->child[get(s[i])] && atual != 0) atual = AC.no[atual]->fail;
-        atual = (AC.no[atual])->child[get(s[i])];
-
-        int aux = atual;
-        while(true) {
-            aux = (AC.no[aux])->endLink;
-            if(aux == 0) break;
-            aux = (AC.no[aux])->fail;
+    /// array of number of occurrences of pattern with id = i
+    void search_text(string &text, int *ans) {
+        if(!built) build();
+        int prefix = 0;
+        for(char c : text) {
+            prefix = transition[prefix][C(c)];
+            for(int u = super[prefix]; u; u = super[suffix[u]])
+                ans[id[u]]++;
         }
     }
+
+    void search_text_linear(string &text, int *ans) { /// O(N+M)
+        if(!built) build();
+        int prefix = 0;
+        for(char c : text) {
+            prefix = transition[prefix][C(c)];
+            lazy[prefix]++;
+        }
+        push_lazy(ans);
+    }
+
+    void push_lazy(int *ans) {
+        vector<int> deg(cnt, 0);
+        for(int i = 1; i < cnt; i++)
+            deg[suffix[i]]++;
+
+        queue<int> fila;
+        for(int i = 1; i < cnt; i++)
+            if(deg[i] == 0) fila.push(i);
+
+        while(!fila.empty()) {
+            int u = fila.front(); fila.pop();
+
+            if(id[u] != -1) ans[id[u]] += lazy[u];
+            lazy[suffix[u]] += lazy[u];
+
+            deg[suffix[u]]--;
+            if(suffix[u] && deg[suffix[u]] == 0) fila.push(suffix[u]);
+        }
+    }
+} dict;
+
+int main() {
+    string str = "aa";
+    dict.add_word(str);
+
+    str = "a";
+    dict.add_word(str);
+
+    dict.build();
+
+    string cmon = "aaaaa";
+    printf("%d\n", dict.search_text(cmon));
+    return 0;
 }
 
